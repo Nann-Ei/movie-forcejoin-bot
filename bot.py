@@ -3,13 +3,40 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-
-# နောက်ပိုင်းမှာ Channel ID ၂ ခု ထည့်မယ်
-CHANNEL_1 = os.getenv("CHANNEL_1")
-CHANNEL_2 = os.getenv("CHANNEL_2")
-
-# Join ပြီးရင် ပြမယ့် Movie Link
 MOVIE_LINK = os.getenv("MOVIE_LINK")
+
+CHANNELS = [
+    {
+        "id": os.getenv("CHANNEL_1"),
+        "link": os.getenv("CHANNEL_1_LINK"),
+        "name": "Channel 1"
+    },
+    {
+        "id": os.getenv("CHANNEL_2"),
+        "link": os.getenv("CHANNEL_2_LINK"),
+        "name": "Channel 2"
+    },
+    {
+        "id": os.getenv("CHANNEL_3"),
+        "link": os.getenv("CHANNEL_3_LINK"),
+        "name": "Channel 3"
+    },
+    {
+        "id": os.getenv("CHANNEL_4"),
+        "link": os.getenv("CHANNEL_4_LINK"),
+        "name": "Channel 4"
+    },
+    {
+        "id": os.getenv("CHANNEL_5"),
+        "link": os.getenv("CHANNEL_5_LINK"),
+        "name": "Channel 5"
+    },
+    {
+        "id": os.getenv("CHANNEL_6"),
+        "link": os.getenv("CHANNEL_6_LINK"),
+        "name": "Channel 6"
+    }
+]
 
 
 async def check_member(bot, user_id, channel_id):
@@ -30,84 +57,91 @@ async def check_member(bot, user_id, channel_id):
 
 
 def join_keyboard():
-    keyboard = [
-        [
+    keyboard = []
+
+    for channel in CHANNELS:
+        keyboard.append([
             InlineKeyboardButton(
-                "🔽 JOIN CHANNEL 1 🔽",
-                url=os.getenv("CHANNEL_1_LINK")
+                f"🔗 JOIN {channel['name']}",
+                url=channel["link"]
             )
-        ],
-        [
-            InlineKeyboardButton(
-                "🔽 JOIN CHANNEL 2 🔽",
-                url=os.getenv("CHANNEL_2_LINK")
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "✅ I JOINED / CHECK",
-                callback_data="check_join"
-            )
-        ]
-    ]
+        ])
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "✅ I JOINED / CHECK",
+            callback_data="check_join"
+        )
+    ])
 
     return InlineKeyboardMarkup(keyboard)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🎬 Movie ကြည့်ရန်အတွက်\n\n"
-        "အောက်က Channel ၂ ခုလုံးကို Join လုပ်ပေးပါ။\n\n"
+        "🎬 MOVIE ရယူရန်\n\n"
+        "အောက်က Channel ၆ ခုလုံးကို Join လုပ်ပေးပါ။\n\n"
         "Join ပြီးရင် ✅ I JOINED / CHECK ကိုနှိပ်ပါ။",
         reply_markup=join_keyboard()
     )
 
 
-async def check_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def check_join(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
     query = update.callback_query
     await query.answer()
 
     user_id = query.from_user.id
 
-    joined_1 = await check_member(
-        context.bot,
-        user_id,
-        CHANNEL_1
-    )
+    not_joined = []
 
-    joined_2 = await check_member(
-        context.bot,
-        user_id,
-        CHANNEL_2
-    )
+    for i, channel in enumerate(CHANNELS, start=1):
+        joined = await check_member(
+            context.bot,
+            user_id,
+            channel["id"]
+        )
 
-    if joined_1 and joined_2:
-        keyboard = [
-            [
-                InlineKeyboardButton(
-                    "🎬 WATCH MOVIE 🎬",
-                    url=MOVIE_LINK
-                )
-            ]
-        ]
+        if not joined:
+            not_joined.append(i)
+
+    if not not_joined:
+
+        keyboard = [[
+            InlineKeyboardButton(
+                "🎬 WATCH MOVIE",
+                url=MOVIE_LINK
+            )
+        ]]
 
         await query.edit_message_text(
-            "✅ Channel ၂ ခုလုံး Join ထားပါတယ်။\n\n"
-            "🎬 အခု Movie ကို ကြည့်နိုင်ပါပြီ။",
+            "✅ Channel ၆ ခုလုံး Join ထားပါတယ်။\n\n"
+            "🎬 Movie ကြည့်နိုင်ပါပြီ။",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
     else:
+
+        missing = ", ".join(
+            [f"Channel {x}" for x in not_joined]
+        )
+
         await query.answer(
-            "❌ Channel ၂ ခုလုံး Join လုပ်ထားတာ မတွေ့သေးပါဘူး။",
+            f"❌ မ Join ရသေးပါ: {missing}",
             show_alert=True
         )
 
 
 def main():
+
     app = Application.builder().token(BOT_TOKEN).build()
 
-    app.add_handler(CommandHandler("start", start))
+    app.add_handler(
+        CommandHandler("start", start)
+    )
+
     app.add_handler(
         CallbackQueryHandler(
             check_join,
